@@ -1,4 +1,3 @@
-
 import mxnet as mx
 import numpy as np
 import logging
@@ -6,8 +5,6 @@ import math
 from skimage import io
 from sklearn import utils
 logging.basicConfig(level = logging.DEBUG)
-
-
 class Dot(mx.operator.NumpyOp):
     def __init__(self):
         super(Dot,self).__init__(True)
@@ -33,11 +30,9 @@ class Dot(mx.operator.NumpyOp):
         for i in xrange(out_grad[0].shape[0]):
             dx[i] = out_grad[0][i] * y[i]
             dy[i] = out_grad[0][i] * x[i]
-
 data_sign = ['left','right','left_downsample','right_downsample','label','LinearRegression_label']
 left  = mx.sym.Variable('left')
 right = mx.sym.Variable('right')
-
 leftdownsample = mx.sym.Variable('left_downsample')
 rightdownsample= mx.sym.Variable('right_downsample')
 weight1_blue = mx.sym.Variable('l1_blue')
@@ -56,7 +51,6 @@ b1_red = mx.sym.Variable('bias1_red')
 b2_red = mx.sym.Variable('bias2_red')
 b3_red = mx.sym.Variable('bias3_red')
 b4_red = mx.sym.Variable('bias4_red')
-
 conv1_1_blue = mx.sym.Convolution(data=left, weight=weight1_blue,bias =b1_blue,kernel=(3,3),pad=(1,1),num_filter = 32)
 conv1_2_blue = mx.sym.Convolution(data=right,weight=weight1_blue,bias =b1_blue,kernel=(3,3),pad=(1,1),num_filter = 32)
 conv2_1_blue = mx.sym.Convolution(data=conv1_1_blue,weight=weight2_blue,bias = b2_blue,kernel=(3,3),pad=(1,1),num_filter = 32)
@@ -65,7 +59,6 @@ conv3_1_blue = mx.sym.Convolution(data=conv2_1_blue,weight=weight3_blue,bias = b
 conv3_2_blue = mx.sym.Convolution(data=conv2_2_blue,weight=weight3_blue,bias = b3_blue,kernel=(5,5),pad=(2,2),num_filter = 200)
 conv4_1_blue = mx.sym.Convolution(data=conv3_1_blue,weight=weight4_blue,bias = b4_blue,kernel=(5,5),pad=(2,2),num_filter = 200)
 conv4_2_blue = mx.sym.Convolution(data=conv3_2_blue,weight=weight4_blue,bias = b4_blue,kernel=(5,5),pad=(2,2),num_filter = 200)
-
 conv1_1_red = mx.sym.Convolution(data=leftdownsample,weight=weight1_red,bias = b1_red,kernel=(3,3),pad=(1,1),num_filter = 32)
 conv1_2_red = mx.sym.Convolution(data=rightdownsample,weight=weight1_red,bias = b1_red,kernel=(3,3),pad=(1,1),num_filter =32)
 conv2_1_red = mx.sym.Convolution(data=conv1_1_red,weight=weight2_red,bias = b2_red,kernel=(3,3),pad=(1,1),num_filter = 32)
@@ -81,173 +74,175 @@ f_red2 = mx.sym.Flatten(data = conv4_2_red)
 s = mx.sym.Dotproduct(data1=f_blue1,data2=f_blue2)
 net = mx.sym.Group([f_blue1,f_blue2,s])
 
-batch_size = 1024
+# data shape
+
+batch_size = 1500
 s1 = (batch_size,3,13,13)
 s2 = (batch_size,3,7,7)
-
+ctx = mx.gpu(3)
 args_shape,out_shape,aux_shape = net.infer_shape(left=s1,right=s1)
 args_shape = dict(zip(net.list_arguments(),args_shape))
-executor = net.simple_bind(ctx=mx.gpu(3),grad_req='write',left = s1,right= s1)
+executor = net.simple_bind(ctx=ctx,grad_req='write',left = s1,right= s1)
 keys = net.list_arguments()
 args = executor.arg_arrays
 grads = dict(zip(net.list_arguments(),executor.grad_arrays))
 args = dict(zip(keys,args))
 auxs = dict(zip(keys,executor.arg_arrays))
 
-mx.viz.plot_network(net)
 
+class dataiter:
+    def __init__(self,low,high):
+        self.get_data_dir(low,high)
+        self.l_ls = []
+        self.r_ls = []
+        self.ld_ls = []
+        self.rd_ls = []
+        self.labels = []
+        self.len  = high-low
+        self.volume = 0
+    def produce_patch(self,ith):
+        dis = np.round(io.imread(self.data[ith][0])/256.0).astype(int)
+        left= io.imread(self.data[ith][2]) - 128.0
+        left= left.swapaxes(2,1).swapaxes(1,0)
+        right=io.imread(self.data[ith][1]) - 128.0
+        right = right.swapaxes(2,1).swapaxes(1,0)
+        self.generate_patch(left,right,dis)  
+        utils.shuffle(self.l_ls,self.r_ls,self.ld_ls,self.rd_ls,self.labels,random_state=0)
 
-def get_data_dir(high,low):
-    data = []
-    for num in range(high,low):
-        dir_name = '000{}'.format(num)
-        if len(dir_name) ==4 :
-            dir_name = '00'+dir_name
-        elif len(dir_name) == 5:
-            dir_name = '0'+dir_name
-        gt = './disp_noc/'+dir_name+'_10.png'.format(num)
-        imgL = './colored_0/'+dir_name+'_10.png'.format(num)
-        imgR ='./colored_0/'+dir_name+'_11.png'.format(num)
-        data.append((gt,imgL,imgR))
-    return data
+    def get_data_dir(self,low,high):
+        self.data = []
+        for num in range(low,high):
+            dir_name = '000{}'.format(num)
+            if len(dir_name) ==4 :
+                dir_name = '00'+dir_name
+            elif len(dir_name) == 5:
+                dir_name = '0'+dir_name
+            gt = './disp_noc/'+dir_name+'_10.png'.format(num)
+            imgL = './colored_0/'+dir_name+'_10.png'.format(num)
+            imgR ='./colored_0/'+dir_name+'_11.png'.format(num)
+            self.data.append((gt,imgL,imgR))
+
+    def generate_patch(self,left,right,dis):
+        for y in xrange(scale,dis.shape[0]-scale):
+            for x in xrange(scale,dis.shape[1]-scale):
+                if dis[y,x]!=0:
+                    d = dis[y,x]
+                    if x-d>=scale :
+                        self.l_ls.append(left[:,y-scale:y+1+scale,x-scale:x+1+scale])
+                        self.r_ls.append(right[:,y-scale:y+1+scale,x-scale-d:x+1+scale-d])
+                        self.ld_ls.append(left[:,y-scale:y+1+scale:2,x-scale:x+1+scale:2])
+                        self.rd_ls.append(right[:,y-scale:y+1+scale:2,x-scale-d:x+1+scale-d:2])
+                        self.labels.append(1)
+                        while True:
+                            xn = np.random.randint(0,dis.shape[1])
+                            if xn-scale>=0 and xn<dis.shape[1]-scale and x-d != xn:
+                                break
+                        self.l_ls.append(left[:,y-scale:y+1+scale,x-scale:x+1+scale])
+                        self.r_ls.append(right[:,y-scale:y+1+scale,xn-scale:xn+1+scale])
+                        self.ld_ls.append(left[:,y-scale:y+scale+1:2,x-scale:x+1+scale:2])
+                        self.rd_ls.append(right[:,y-scale:y+scale+1:2,xn-scale:xn+1+scale:2])
+                        self.labels.append(0) 
+                        self.volume +=2      
+
+    def load_data(self,batch_size=batch_size):
+        args['left'][:batch_size][:] = np.asarray(self.l_ls[:batch_size])
+        del self.l_ls[:batch_size]
+        args['right'][:batch_size][:]= np.asarray(self.r_ls[:batch_size])
+        del self.r_ls[:batch_size]
+        gt = mx.nd.array(self.labels[:batch_size])
+        del self.labels[:batch_size]
+        self.volume -= batch_size
+'''        args['left_downsample'][:batch_size] = mx.nd.array(self.ld_ls[:batch_size])
+        del self.ld_ls[:batch_size]
+        args['right_downsample'][:batch_size]= mx.nd.array(self.rd_ls[:batch_size])
+        del self.rd_ls[:batch_size]'''
+       
 
 def init(key,weight):
     if 'bias' in key:
         weight[:] = 0
     elif key not in data_sign:
-        weight[:] = mx.random.uniform(-0.007,0.007,weight.shape) 
-        
-def sgd(key,weight,grad,lr,bacth_size):
-    if key not in data_sign:
-        weight = weight - lr*(1/batch_size)*grad
-
-def load_data():
-    args['left'][:] = np.asarray(l_ls[:batch_size])
-    del l_ls[:batch_size]
-    args['right'][:]= np.asarray(r_ls[:batch_size])
-    del r_ls[:batch_size]
-    args['left_downsample'] = mx.nd.array(ld_ls[:batch_size])
-    del ld_ls[:batch_size]
-    args['right_downsample']= mx.nd.array(rd_ls[:batch_size])
-    del rd_ls[:batch_size]
-    gt = mx.nd.array(labels[:batch_size])
-    del labels[:batch_size]
-    
-def cal_grads(pred,label):
-    return mx.nd.array((pred - label)*2)
+        weight[:] = mx.random.uniform(-0.007,0.007,weight.shape)    
 
 def train():
-    utils.shuffle(l_ls,r_ls,ld_ls,rd_ls,labels,random_state=0)
     global count
-    global tot
-    while len(labels)>=batch_size:  
-        load_data() 
+    while data_iter.volume >= batch_size:  
+        data_iter.load_data() 
         count +=1
         executor.forward(is_train=True)
         output = executor.outputs[2]
         grad = 2*(output-gt)
-        grad = grad.copyto(mx.gpu(3))
+        grad = grad.copyto(ctx)
         loss = (mx.nd.square(output-gt).asnumpy()).mean()
-        logging.info("{}th pair img:{}th iteration square loss:{}".format(num,count,loss))
-        executor.backward([mx.nd.zeros((batch_size,33800),ctx=mx.gpu(3)),mx.nd.zeros((batch_size,33800),ctx=mx.gpu(3)),grad])
+        logging.info("training: {}th pair img:{}th iteration square loss:{}".format(num,count,loss))
+        executor.backward([mx.nd.zeros((batch_size,33800),ctx=ctx),mx.nd.zeros((batch_size,33800),ctx=ctx),grad])
         for index,key in enumerate(keys):
             if key not in data_sign:
                 opt.update(index,args[key],grads[key],states[key])
-        tot+=1
 def valdiate():
     global count
-    global tot
-    utils.shuffle(l_ls,r_ls,ld_ls,rd_ls,labels,random_state=0)
-    while len(labels)>=batch_size:  
-        load_data() 
+    while val_iter.volume >= batch_size:  
+        val_iter.load_data() 
         count +=1
         executor.forward(is_train=False)
         output = executor.outputs[2]
         loss = (mx.nd.square(output-gt).asnumpy()).mean()
         logging.info("validate: {}th pair img:{}th iteration square loss:{}".format(num,count,loss))
-        tot+=1
-def generate_patch(left,right,dis):
-    for y in xrange(scale,dis.shape[0]-scale):
-        for x in xrange(scale,dis.shape[1]-scale):
-            if dis[y,x]!=0:
-                d = dis[y,x]
-                if x-d>=scale :
-                    l_ls.append(left[:,y-scale:y+1+scale,x-scale:x+1+scale])
-                    r_ls.append(right[:,y-scale:y+1+scale,x-scale-d:x+1+scale-d])
-                    ld_ls.append(left[:,y-scale:y+1+scale:2,x-scale:x+1+scale:2])
-                    rd_ls.append(right[:,y-scale:y+1+scale:2,x-scale-d:x+1+scale-d:2])
-                    labels.append(1)
-                    while True:
-                        xn = np.random.randint(0,dis.shape[1])
-                        if xn-scale>=0 and xn<dis.shape[1]-scale and x-d != xn:
-                            break
-                    l_ls.append(left[:,y-scale:y+1+scale,x-scale:x+1+scale])
-                    r_ls.append(right[:,y-scale:y+1+scale,xn-scale:xn+1+scale])
-                    ld_ls.append(left[:,y-scale:y+scale+1:2,x-scale:x+1+scale:2])
-                    rd_ls.append(right[:,y-scale:y+scale+1:2,xn-scale:xn+1+scale:2])
-                    labels.append(0)
-def dir2img(ith):
+#model = mx.model.FeedForward(net,ctx = ctx,numpy_batch_size = batch_size,optimizer ='sgd',initializer = mx.initializer.Uniform(scale=0.007)), 
+scale = 6
+num_epoches = 1
+count = 0
+data_iter =  dataiter(0,1)
+val_iter  =  dataiter(1,2)
+test_iter =  dataiter(2,3)
+states    =  {}
+gt = mx.nd.zeros((batch_size,),ctx)
+opt = mx.optimizer.ccSGD(learning_rate=0.0001,momentum=0.9,wd=0.00001,rescale_grad=(1.0/batch_size))
+
+for index,key in enumerate(keys):
+    if key not in data_sign:
+        states[key] = opt.create_state(index,args[key])
+        init(key,args[key])
+# train + val        
+for ith_epoche in range(num_epoches):
+    for num in range(data_iter.len):
+        data_iter.produce_patch(num)
+        logging.info('training {}th pair img has generate {} patches'.format(num,data_iter.volume))
+        train()
+    mx.model.save_checkpoint('stereomatching',ith_epoche,net,args,auxs)
+
+    for num in range(val_iter.len):
+        val_iter.produce_patch(num)
+        logging.info('validating {}th pair img has generate {} patches'.format(num,len(val_iter.labels)))
+        valdiate()
+    opt.lr = opt.lr * 0.1
+
+#predict
+for num,ith in enumerate(test_iter.data):
     dis = np.round(io.imread(ith[0])/256.0).astype(int)
     left= io.imread(ith[2]) - 128.0
     left= left.swapaxes(2,1).swapaxes(1,0)
     right=io.imread(ith[1]) - 128.0
     right = right.swapaxes(2,1).swapaxes(1,0)
-    return dis,left,right
+    dis_pred = np.zeros((dis.shape[0],batch_size))
+    for y in xrange(scale,dis.shape[0]-scale):
+        res_l = np.zeros((dis.shape[1],33800))
+        res_r = np.zeros((dis.shape[1],33800))
+        for x in xrange(scale,dis.shape[1]-scale):
+            test_iter.l_ls.append(left[:,y-scale:y+1+scale,x-scale:x+1+scale])
+            test_iter.r_ls.append(right[:,y-scale:y+1+scale,x-scale:x+1+scale])
+            test_iter.ld_ls.append(left[:,y-scale:y+1+scale:2,x-scale:x+1+scale:2])
+            test_iter.rd_ls.append(right[:,y-scale:y+1+scale:2,x-scale:x+1+scale:2])
+            test_iter.labels.append(0)
+            test_iter.volume +=1
 
+        test_iter.load_data(dis.shape[1]-2*scale)
+        executor.forward(is_train=False)  
+        out1 = mx.nd.array(executor.outputs[0].asnumpy().swapaxes(0,1),ctx)
+        out2 = executor.outputs[1]
+        x = mx.nd.array(range(batch_size),ctx)
+        dis_pred[y,:]  =  (x -  mx.nd.argmax_channel(mx.nd.dot(out2,out1))).asnumpy()
+    io.imsave('./result/{}.png'.format(num),dis_pred[:dis.shape[0],:dis.shape[1]])
 
-# In[ ]:
+print 'Success!!'
 
-scale = 6
-num_epoches = 5
-tot = 0
-count = 0
-data_list = get_data_dir(0,3)
-val_list = get_data_dir(160,181)
-test_list= get_data_dir(181,194)
-states = {}
-l_ls = []
-r_ls = []
-ld_ls = []
-rd_ls = []
-labels = []
-gt = mx.nd.zeros((batch_size,),mx.gpu(3))
-opt = mx.optimizer.ccSGD(learning_rate=0.00001,momentum=0.9,wd=0.00001,rescale_grad=(1.0/batch_size))
-for index,key in enumerate(keys):
-    if key not in data_sign:
-        states[key] = opt.create_state(index,args[key])
-        init(key,args[key])
-        
-for ith_epoche in range(num_epoches):
-    for num,ith in enumerate(data_list):
-        dis,left,right = dir2img(ith)
-        generate_patch(left,right,dis)
-        logging.info('training {}th pair img has generate {} patches'.format(num,len(labels)))
-        train()
-
-    for num,ith in enumerate(val_list):
-        dis = dis,left,right = dir2img(ith)
-        generate_patch(left,right,dis)
-        logging.info('val {}th pair img has generate {} patches'.format(num,len(labels)))
-        valdiate()
-    opt.lr = opt.lr * 0.1
-    mx.model.save_checkpoint('stereomatching',ith_epoche,net,args,auxs)
-
-
-# In[10]:
-'''
-grads[]
-
-
-# In[ ]:
-
-get_ipython().magic(u'matplotlib inline')
-import matplotlib.pyplot as plt
-plt.figure(1)
-plt.figure(2)
-plt.figure(1)
-i = 1518
-plt.imshow(l_ls[i].swapaxes(0,1).swapaxes(1,2)+128)
-plt.figure(2)
-plt.imshow(r_ls[i].swapaxes(0,1).swapaxes(1,2)+128) 
-
-'''
