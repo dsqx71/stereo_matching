@@ -146,8 +146,8 @@ def valdiate():
     logging.info("the {}th img avg square loss :{}".format(num,tot/float(count*batch_size)))
 
 def predict(left,right):
-    dis_pred = np.zeros((dis.shape[0]-2*scale,batch_size))
-    values   = np.zeros((dis.shape[0]-2*scale,batch_size))
+    dis_pred = np.zeros((dis.shape[0],batch_size))
+    values   = np.zeros((dis.shape[0],batch_size))
     for y in xrange(scale,dis.shape[0]-scale):
         for x in xrange(scale,dis.shape[1]-scale):
             test_iter.l_ls.append( left[:,y-scale:y+1+scale,x-scale:x+1+scale])
@@ -259,9 +259,9 @@ if __name__ == '__main__':
         
 
     scale = 6
-    num_epoches = 1
+    num_epoches = 3
     count = 0
-    data_iter =  dataiter(0,10)
+    data_iter =  dataiter(0,175)
     val_iter  =  dataiter(175,180)
     test_iter =  dataiter(180,194)
     states    =  {}
