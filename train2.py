@@ -26,7 +26,7 @@ def init(key,weight):
 
 def draw_patch(img_idx):
     '''
-        画出patch，附带groud truth 和 matching score
+        画patch，附带groud truth 和 matching score
     '''
     idx = randint(30,1000)
     l_p =  args['left'].asnumpy()[idx].swapaxes(0,1).swapaxes(1,2) + 128
@@ -38,7 +38,7 @@ def draw_patch(img_idx):
     p2 = plt.subplot(212)
     p1.imshow(l_p)
     p2.imshow(r_p)
-    plt.title('img:%d  gt:%d  matchingscore:%.5f ' % (img_idx,result[1],result[0]))
+    plt.title('gt: %d  matching score: %.5f ' % (result[1],result[0]))
     plt.savefig('./result/img_%d_gt_%d_matchingscore_%.5f.jpg' % (img_idx,result[1],result[0]))
     plt.close()   
 
@@ -48,6 +48,7 @@ if __name__ == '__main__':
     parser.add_argument('--continue',action='store',dest='con',type=int)
     parser.add_argument('--lr',action='store',dest='lr',type=float)
     cmd = parser.parse_args()
+    #cmd.con 不是指epoch，是指第几个轮，200个batch 为1轮
 
     lr = cmd.lr
     batch_size = 1235
@@ -127,14 +128,13 @@ if __name__ == '__main__':
             tmp = output.asnumpy()
             acc = tmp[args['gt'].asnumpy()==1].mean()
             err = tmp[args['gt'].asnumpy()==0].mean()
-            logging.info("training: {}th pair img:{}th l2 loss:{} acc:{} err:{} >:{} lr:{}".format(nbatch,train_iter.img_idx,loss,acc,err,acc-err,opt.lr))
-            draw_patch(train_iter.img_idx)
+            #logging.info("training: {}th pair img:{}th l2 loss:{} acc:{} err:{} >:{} lr:{}".format(nbatch,train_iter.img_idx,loss,acc,err,acc-err,opt.lr))
             #30轮的平均loss
             if nbatch % 30 == 0:
                 logging.info("mean loss of 30 batches: {} ".format(loss_of_30/30.0))
                 loss_of_30 = 0.0
-                #draw_patch(train_iter.img_idx)
-            
+                draw_patch(train_iter.img_idx)
+        
             #update args
             executor.backward([mx.nd.zeros((batch_size,33800),ctx=ctx),mx.nd.zeros((batch_size,33800),ctx=ctx),grad])
             for index,key in enumerate(keys):

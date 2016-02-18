@@ -10,22 +10,20 @@ from random import shuffle
 import matplotlib.pyplot as plt
 
 def get_network():
+    
     relu = {}
     conv = {}
     weight = {}
     bias = {}
-    
     relu[0]  = mx.sym.Variable('left')
     relu[1]  = mx.sym.Variable('right')
     relu[2]  = mx.sym.Variable('left_downsample')
     relu[3]  = mx.sym.Variable('right_downsample')
-
     for num_layer in range(1,5):
         weight[0]   = mx.sym.Variable('l%d_blue' % num_layer)
         weight[1]   =  mx.sym.Variable('l%d_red' % num_layer)
         bias[0]    = mx.sym.Variable('bias%d_blue' % num_layer)
         bias[1]   = mx.sym.Variable('bias%d_red' % num_layer)
-        
         if num_layer<=2:
             kernel = (3,3)
             pad = (1,1)
@@ -34,11 +32,9 @@ def get_network():
             kernel = (5,5)
             pad = (2,2)
             num_filter = 200
-    
         for j in range(4):
             conv[j]  = mx.sym.Convolution(data = relu[j] ,weight=weight[j/2],bias=bias[j/2],kernel=kernel,num_filter=num_filter,pad= pad)
             relu[j] =  mx.sym.Activation(data=conv[j], act_type="relu")
-    
     flatten = {}        
     for j in range(4):
         flatten[j] = mx.sym.Flatten(data=relu[j])
@@ -119,7 +115,7 @@ class dataiter(mx.io.DataIter):
     
     def reset(self):
         '''
-          self.inventory  : patch inventory
+          这几个list保存patch，inventory 表示dataiter剩余的patch数量
         '''
         self.index = 0
         self.img_idx = 0
@@ -131,20 +127,22 @@ class dataiter(mx.io.DataIter):
         self.labels = []
 
     def iter_next(self):
-
         if self.inventory < self.batch_size:
             if self.img_idx >= self.high:
                 return False
             if self.datatype !='test':
                 self.produce_patch(self.img_idx)
             else:
-                self.produce_patch_test(self.img_idx)
+                self.produce_patch_test(self.img_idx) 
+                #没写
             self.img_idx+=1
-            return True
+            return self.iter_next()
         else: 
+            self.inventory -= self.batch_size
             return True
 
     def getdata(self):
+        #
         left = mx.nd.array(np.asarray(self.l_ls[:self.batch_size]),self.ctx)
         right = mx.nd.array(np.asarray(self.r_ls[:self.batch_size]),self.ctx)
         left_downsample = mx.nd.array(np.asarray(self.ld_ls[:self.batch_size]),self.ctx)
