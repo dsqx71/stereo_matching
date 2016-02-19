@@ -10,7 +10,7 @@ from random import shuffle
 import matplotlib.pyplot as plt
 
 def get_network():
-    
+
     relu = {}
     conv = {}
     weight = {}
@@ -26,11 +26,11 @@ def get_network():
         bias[1]   = mx.sym.Variable('bias%d_red' % num_layer)
         if num_layer<=2:
             kernel = (3,3)
-            pad = (1,1)
+            pad = (0,0)
             num_filter = 32
         else:
             kernel = (5,5)
-            pad = (2,2)
+            pad = (0,0)
             num_filter = 200
         for j in range(4):
             conv[j]  = mx.sym.Convolution(data = relu[j] ,weight=weight[j/2],bias=bias[j/2],kernel=kernel,num_filter=num_filter,pad= pad)
@@ -46,35 +46,17 @@ def get_network():
 DataBatch = namedtuple('DataBatch', ['data', 'label', 'pad', 'index'])
 class dataiter(mx.io.DataIter):
 
-    def __init__(self,low,high,batch_size,ctx,datatype='train'):
+    def __init__(self,img_dir,batch_size,ctx,datatype='train'):
         '''
-            low,high  图片的编号(kitty dataset 0 - 194)
+            img_dir: 图片位置 [(disparity_dir,left_dir,right_dir),.......]
         '''
         self.batch_size = batch_size
         self.reset()
-        self.low = low
-        self.high= high
+        self.img_dir  = img_dir
+        self.num_imgs = len(img_dir)
         self.datatype = datatype   
         self.ctx = ctx
-        self.get_data_dir(low,high)   
-
-    def get_data_dir(self,low,high):
-        '''
-            return： list of image dir
-        '''
-        self.img_dir = []
-        for num in range(low,high):
-            dir_name = '000{}'.format(num)
-            if len(dir_name) == 4 :
-                dir_name = '00'+dir_name
-            elif len(dir_name) == 5:
-                dir_name = '0'+ dir_name
-            gt = './disp_noc/'+dir_name+'_10.png'.format(num)
-            imgL = './colored_0/'+dir_name+'_10.png'.format(num)
-            imgR = './colored_1/'+dir_name+'_10.png'.format(num)
-            self.img_dir.append((gt,imgL,imgR))
-        #shuffle(self.img_dir) 
-    
+     
     def produce_patch(self,ith):
         '''
             self.l_ls : list of left patch
@@ -85,7 +67,7 @@ class dataiter(mx.io.DataIter):
         right= io.imread(self.img_dir[ith][2]) - 128.0
         right= right.swapaxes(2,1).swapaxes(1,0)
         self.generate_patch_with_ground_truth(left,right,dis)  
-        #utils.shuffle(self.l_ls,self.r_ls,self.ld_ls,self.rd_ls,self.labels)
+        utils.shuffle(self.l_ls,self.r_ls,self.ld_ls,self.rd_ls,self.labels)
         
     def generate_patch_with_ground_truth(self,left,right,dis):
         '''
@@ -128,7 +110,7 @@ class dataiter(mx.io.DataIter):
 
     def iter_next(self):
         if self.inventory < self.batch_size:
-            if self.img_idx >= self.high:
+            if self.img_idx >= self.num_imgs:
                 return False
             if self.datatype !='test':
                 self.produce_patch(self.img_idx)
@@ -142,7 +124,7 @@ class dataiter(mx.io.DataIter):
             return True
 
     def getdata(self):
-        #
+
         left = mx.nd.array(np.asarray(self.l_ls[:self.batch_size]),self.ctx)
         right = mx.nd.array(np.asarray(self.r_ls[:self.batch_size]),self.ctx)
         left_downsample = mx.nd.array(np.asarray(self.ld_ls[:self.batch_size]),self.ctx)
@@ -151,6 +133,7 @@ class dataiter(mx.io.DataIter):
         del self.r_ls[:self.batch_size]
         del self.ld_ls[:self.batch_size]
         del self.rd_ls[:self.batch_size]
+        
         return [left,right,left_downsample,right_downsample]
     
     def getlabel(self):

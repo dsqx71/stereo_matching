@@ -16,7 +16,7 @@ from collections import namedtuple
 
 logging.basicConfig(level=logging.DEBUG,
                     format='%(asctime)s %(filename)s[line:%(lineno)d] %(levelname)s %(message)s',
-                    datefmt ='%a, %d %b %Y %H:%M:%S')
+                    datefmt ='%d %H:%M:%S')
 
 def init(key,weight):
     if 'bias' in key:
@@ -42,13 +42,28 @@ def draw_patch(img_idx):
     plt.savefig('./result/img_%d_gt_%d_matchingscore_%.5f.jpg' % (img_idx,result[1],result[0]))
     plt.close()   
 
+def get_kitty_data_dir(low,high):
+    img_dir = []
+    for num in range(low,high):
+        dir_name = '000{}'.format(num)
+        if len(dir_name) ==4 :
+            dir_name = '00'+dir_name
+        elif len(dir_name) == 5:
+            dir_name = '0'+dir_name
+        gt = './disp_noc/'+dir_name+'_10.png'.format(num)
+        imgL = './colored_0/'+dir_name+'_10.png'.format(num)
+        imgR = './colored_1/'+dir_name+'_10.png'.format(num)
+        img_dir.append((gt,imgL,imgR))
+    shuffle(img_dir)
+    return img_dir
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()  
     parser.add_argument('--continue',action='store',dest='con',type=int)
     parser.add_argument('--lr',action='store',dest='lr',type=float)
     cmd = parser.parse_args()
-    #cmd.con 不是指epoch，是指第几个轮，200个batch 为1轮
+    #cmd.con 不是指epoch，是指第几个轮，200个batch 为1轮 。 kitty dataset 跑一次epoch 需要3 小时
 
     lr = cmd.lr
     batch_size = 1235
@@ -72,12 +87,16 @@ if __name__ == '__main__':
         #继续之前的训练
         net,args,aux = mx.model.load_checkpoint('stereo',cmd.con)
         keys = net.list_arguments()
+        net = get_network()
         executor = net.simple_bind(ctx=ctx,grad_req='add',left = s1,right= s1)
         for key in executor.arg_dict:
-            if key not in  data_sign:
-                executor.arg_dict[key][:] = args[key]
-            else:
+            if key in  data_sign:
                 executor.arg_dict[key][:] = mx.nd.zeros((executor.arg_dict[key].shape),ctx)
+            else:
+                if key in args:
+                    executor.arg_dict[key][:] = args[key]
+                else:
+                    init(key,executor.arg_dict[key])
         
         grads = dict(zip(net.list_arguments(),executor.grad_arrays))
         args  = dict(zip(keys,executor.arg_arrays))
@@ -87,9 +106,9 @@ if __name__ == '__main__':
 
 
     scale = 6
-    num_epoches = 3
-    train_iter =  dataiter(0,175,batch_size,ctx,'train')
-    val_iter   =  dataiter(175,180,batch_size,ctx,'valdiate')
+    num_epoches = 1
+    train_iter =  dataiter(get_kitty_data_dir(0,175),batch_size,ctx,'train')
+    val_iter   =  dataiter(get_kitty_data_dir(175,180),batch_size,ctx,'valdiate')
     states     =  {}
 
     #init args and optimizer
@@ -128,6 +147,7 @@ if __name__ == '__main__':
             tmp = output.asnumpy()
             acc = tmp[args['gt'].asnumpy()==1].mean()
             err = tmp[args['gt'].asnumpy()==0].mean()
+
             #logging.info("training: {}th pair img:{}th l2 loss:{} acc:{} err:{} >:{} lr:{}".format(nbatch,train_iter.img_idx,loss,acc,err,acc-err,opt.lr))
             #30轮的平均loss
             if nbatch % 30 == 0:
@@ -136,12 +156,12 @@ if __name__ == '__main__':
                 draw_patch(train_iter.img_idx)
         
             #update args
-            executor.backward([mx.nd.zeros((batch_size,33800),ctx=ctx),mx.nd.zeros((batch_size,33800),ctx=ctx),grad])
+            executor.backward([mx.nd.zeros((batch_size,200),ctx=ctx),mx.nd.zeros((batch_size,200),ctx=ctx),grad])
             for index,key in enumerate(keys):
                 if key not in data_sign:
                     opt.update(index,args[key],grads[key],states[key])
                     grads[key][:] = np.zeros(grads[key].shape)
-    
+            
             if nbatch % 200==0:
                 cmd.con+=1
                 mx.model.save_checkpoint('stereo',cmd.con,net,args,auxs)
@@ -156,9 +176,8 @@ if __name__ == '__main__':
             args['gt'][:] = dbatch.label
             nbatch += 1
             executor.forward(is_train=False)
-            loss = (mx.nd.square(executor.outputs[2]-args['gt']).asnumpy())
+            loss = (mx.nd.square(executor.outputs[2]-args['gt']).asnumpy()).mean()
             val_loss += loss
-            loss = loss.mean()
             logging.info('eval:{}th pair img:{}th l2 loss:{}'.format(nbatch,val_iter.img_idx,loss))
         logging.info('eval : ith_epoch :{} mean loss:{}'.format(ith_epoche,val_loss/float(nbatch)))
     logging.info('Successful!')
