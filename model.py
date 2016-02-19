@@ -9,8 +9,19 @@ from random import randint
 from random import shuffle
 import matplotlib.pyplot as plt
 
-def get_network():
+def get_network(network_type):
+    ''' 
+     训练时使用not fully 的cnn。
+     因为 fully cnn 没法高效传label 和gradient
+     
+     1)kitty dataset 有缺失和无效的disparity （整张图有差不多一半没有disparity）
+     2)计算gradient 的时候不能直接用ndarray 而是numpy
+     3)not fully cnn 训练时间和论文中的相符
 
+     但是not fully cnn 之后需要扩展rnn as crf 就很麻烦了
+    
+     预测时可以使用fully cnn
+    '''
     relu = {}
     conv = {}
     weight = {}
@@ -35,12 +46,15 @@ def get_network():
         for j in range(4):
             conv[j]  = mx.sym.Convolution(data = relu[j] ,weight=weight[j/2],bias=bias[j/2],kernel=kernel,num_filter=num_filter,pad= pad)
             relu[j] =  mx.sym.Activation(data=conv[j], act_type="relu")
-    flatten = {}        
-    for j in range(4):
-        flatten[j] = mx.sym.Flatten(data=relu[j])
-    s = mx.sym.Dotproduct(data1=flatten[0],data2=flatten[1])
-    net = mx.sym.Group([flatten[0],flatten[1],s])
     
+    if network_type!='fully':
+        flatten = {}        
+        for j in range(4):
+            flatten[j] = mx.sym.Flatten(data=relu[j])
+        s = mx.sym.Dotproduct(data1=flatten[0],data2=flatten[1])
+        net = mx.sym.Group([flatten[0],flatten[1],s])
+    else:
+        net  = mx.sym.Group([relu[0],relu[1]])
     return net
 
 DataBatch = namedtuple('DataBatch', ['data', 'label', 'pad', 'index'])

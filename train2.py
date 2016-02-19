@@ -57,6 +57,23 @@ def get_kitty_data_dir(low,high):
     shuffle(img_dir)
     return img_dir
 
+def load_model(name,epoch,shape,network_type,ctx):
+
+    data_sign = ['left','right','left_downsample','right_downsample','label','LinearRegression_label','gt']
+    net,args,aux = mx.model.load_checkpoint(name,epoch)
+    keys = net.list_arguments()
+    net = get_network(network_type)
+    executor = net.simple_bind(ctx=ctx,grad_req='add',left = shape,right= shape)
+    for key in executor.arg_dict:
+        if key in  data_sign:
+            executor.arg_dict[key][:] = mx.nd.zeros((executor.arg_dict[key].shape),ctx)
+        else:
+            if key in args:
+                executor.arg_dict[key][:] = args[key]
+            else:
+                init(key,executor.arg_dict[key])
+    return net,executor
+
 if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()  
@@ -74,7 +91,7 @@ if __name__ == '__main__':
     
     if cmd.con == -1:
         #重新训练
-        net = get_network()
+        net = get_network('not fully')
         executor = net.simple_bind(ctx=ctx,grad_req='add',left = s1,right= s1)
         keys  = net.list_arguments()
         grads = dict(zip(net.list_arguments(),executor.grad_arrays))
@@ -85,20 +102,9 @@ if __name__ == '__main__':
     
     else:
         #继续之前的训练
-        net,args,aux = mx.model.load_checkpoint('stereo',cmd.con)
+        net,executor = load_model('stereo',cmd.con,s1,'not fully',ctx)
         keys = net.list_arguments()
-        net = get_network()
-        executor = net.simple_bind(ctx=ctx,grad_req='add',left = s1,right= s1)
-        for key in executor.arg_dict:
-            if key in  data_sign:
-                executor.arg_dict[key][:] = mx.nd.zeros((executor.arg_dict[key].shape),ctx)
-            else:
-                if key in args:
-                    executor.arg_dict[key][:] = args[key]
-                else:
-                    init(key,executor.arg_dict[key])
-        
-        grads = dict(zip(net.list_arguments(),executor.grad_arrays))
+        grads = dict(zip(keys,executor.grad_arrays))
         args  = dict(zip(keys,executor.arg_arrays))
         auxs  = dict(zip(keys,executor.arg_arrays))
         args['gt'] = mx.nd.zeros((batch_size,),ctx)
