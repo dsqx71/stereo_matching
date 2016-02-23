@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 def get_network(network_type):
 
-    
+
     relu = {}
     conv = {}
     weight = {}
