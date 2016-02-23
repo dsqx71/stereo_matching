@@ -79,11 +79,13 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()  
     parser.add_argument('--continue',action='store',dest='con',type=int)
     parser.add_argument('--lr',action='store',dest='lr',type=float)
+    parser.add_argument('--l',action='store',dest='low',type=int)
+    parser.add_argument('--h',action='store',dest='high',type=int)
     cmd = parser.parse_args()
     #cmd.con 不是指epoch，是指第几个轮，200个batch 为1轮 。 kitty dataset 跑一次epoch 需要3 小时
 
     lr = cmd.lr
-    batch_size = 1235
+    batch_size = 10000
     s1 = (batch_size,3,13,13)
     s2 = (batch_size,3,7,7)
     ctx = mx.gpu(3) 
@@ -112,9 +114,9 @@ if __name__ == '__main__':
 
 
     scale = 6
-    num_epoches = 1
-    train_iter =  dataiter(get_kitty_data_dir(0,175),batch_size,ctx,'train')
-    val_iter   =  dataiter(get_kitty_data_dir(175,180),batch_size,ctx,'valdiate')
+    num_epoches = 10
+    train_iter =  dataiter(get_kitty_data_dir(0,175),batch_size,ctx,cmd.low,cmd.high,'train')
+    val_iter   =  dataiter(get_kitty_data_dir(175,180),batch_size,ctx,cmd.low,cmd.high,'valdiate')
     states     =  {}
 
     #init args and optimizer
@@ -154,12 +156,12 @@ if __name__ == '__main__':
             acc = tmp[args['gt'].asnumpy()==1].mean()
             err = tmp[args['gt'].asnumpy()==0].mean()
 
-            #logging.info("training: {}th pair img:{}th l2 loss:{} acc:{} err:{} >:{} lr:{}".format(nbatch,train_iter.img_idx,loss,acc,err,acc-err,opt.lr))
+            logging.info("training: {}th pair img:{}th l2 loss:{} acc:{} err:{} >:{} lr:{}".format(nbatch,train_iter.img_idx,loss,acc,err,acc-err,opt.lr))
             #30轮的平均loss
             if nbatch % 30 == 0:
                 logging.info("mean loss of 30 batches: {} ".format(loss_of_30/30.0))
                 loss_of_30 = 0.0
-                draw_patch(train_iter.img_idx)
+                #draw_patch(train_iter.img_idx)
         
             #update args
             executor.backward([mx.nd.zeros((batch_size,200),ctx=ctx),mx.nd.zeros((batch_size,200),ctx=ctx),grad])
@@ -168,8 +170,8 @@ if __name__ == '__main__':
                     opt.update(index,args[key],grads[key],states[key])
                     grads[key][:] = np.zeros(grads[key].shape)
             
-            if nbatch % 200==0:
-                cmd.con+=1
+            if nbatch % 20==0:
+                cmd.con = (cmd.con + 1) % 2000
                 mx.model.save_checkpoint('stereo',cmd.con,net,args,auxs)
 
         logging.info('training: ith_epoche :{} mean loss:{}'.format(ith_epoche,train_loss/float(nbatch)))

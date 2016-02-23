@@ -10,18 +10,8 @@ from random import shuffle
 import matplotlib.pyplot as plt
 
 def get_network(network_type):
-    ''' 
-     训练时使用not fully 的cnn。
-     因为 fully cnn 没法高效传label 和gradient
-     
-     1)kitty dataset 有缺失和无效的disparity （整张图有差不多一半没有disparity）
-     2)计算gradient 的时候不能直接用ndarray 而是numpy
-     3)not fully cnn 训练时间和论文中的相符
 
-     但是not fully cnn 之后需要扩展rnn as crf 就很麻烦了
     
-     预测时可以使用fully cnn
-    '''
     relu = {}
     conv = {}
     weight = {}
@@ -60,9 +50,10 @@ def get_network(network_type):
 DataBatch = namedtuple('DataBatch', ['data', 'label', 'pad', 'index'])
 class dataiter(mx.io.DataIter):
 
-    def __init__(self,img_dir,batch_size,ctx,datatype='train'):
+    def __init__(self,img_dir,batch_size,ctx,low,high,datatype='train'):
         '''
             img_dir: 图片位置 [(disparity_dir,left_dir,right_dir),.......]
+            low  high 决定负样本的相对于正样本的位置
         '''
         self.batch_size = batch_size
         self.reset()
@@ -70,6 +61,8 @@ class dataiter(mx.io.DataIter):
         self.num_imgs = len(img_dir)
         self.datatype = datatype   
         self.ctx = ctx
+        self.low = low
+        self.high = high
      
     def produce_patch(self,ith):
         '''
@@ -99,8 +92,10 @@ class dataiter(mx.io.DataIter):
                         self.rd_ls.append(right[:,y-scale:y+1+scale:2,x-scale-d:x+1+scale-d:2])
                         self.labels.append(1)
                         while True:
-                            xn = np.random.randint(scale,dis.shape[1]-scale)
-                            if xn<dis.shape[1]-scale and x-d != xn:
+                            temp = [x - d + move for move in range(self.low,self.high+1)]
+                            temp.extend([x - d - move for move in range(self.low,self.high+1)])
+                            xn = np.random.choice(temp)
+                            if xn<dis.shape[1]-scale and x-d != xn and xn>=scale:
                                 break
                         self.l_ls.append( left[:,y-scale:y+1+scale,    x-scale:x+1+scale])
                         self.r_ls.append(right[:,y-scale:y+1+scale,xn-scale:xn+1+scale])
@@ -157,8 +152,10 @@ class dataiter(mx.io.DataIter):
             return result
         else :
             return None
+    
     def getindex(self):
         return self.index
+    
     def getpad(self):
         return 0
 
