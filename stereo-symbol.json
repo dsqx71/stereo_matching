@@ -1,0 +1,281 @@
+{
+  "nodes": [
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "left", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "l1_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "bias1_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(3, 3)", 
+        "no_bias": "False", 
+        "num_filter": "32", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution0", 
+      "inputs": [[0, 0], [1, 0], [2, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation0", 
+      "inputs": [[3, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "l2_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "bias2_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(3, 3)", 
+        "no_bias": "False", 
+        "num_filter": "32", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution4", 
+      "inputs": [[4, 0], [5, 0], [6, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation4", 
+      "inputs": [[7, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "l3_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "bias3_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(5, 5)", 
+        "no_bias": "False", 
+        "num_filter": "200", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution8", 
+      "inputs": [[8, 0], [9, 0], [10, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation8", 
+      "inputs": [[11, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "l4_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "bias4_blue", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(5, 5)", 
+        "no_bias": "False", 
+        "num_filter": "200", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution12", 
+      "inputs": [[12, 0], [13, 0], [14, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation12", 
+      "inputs": [[15, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Flatten", 
+      "param": {}, 
+      "name": "flatten0", 
+      "inputs": [[16, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "null", 
+      "param": {}, 
+      "name": "right", 
+      "inputs": [], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(3, 3)", 
+        "no_bias": "False", 
+        "num_filter": "32", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution1", 
+      "inputs": [[18, 0], [1, 0], [2, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation1", 
+      "inputs": [[19, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(3, 3)", 
+        "no_bias": "False", 
+        "num_filter": "32", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution5", 
+      "inputs": [[20, 0], [5, 0], [6, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation5", 
+      "inputs": [[21, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(5, 5)", 
+        "no_bias": "False", 
+        "num_filter": "200", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution9", 
+      "inputs": [[22, 0], [9, 0], [10, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation9", 
+      "inputs": [[23, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Convolution", 
+      "param": {
+        "dilate": "(1, 1)", 
+        "kernel": "(5, 5)", 
+        "no_bias": "False", 
+        "num_filter": "200", 
+        "num_group": "1", 
+        "pad": "(0, 0)", 
+        "stride": "(1, 1)", 
+        "workspace": "512"
+      }, 
+      "name": "convolution13", 
+      "inputs": [[24, 0], [13, 0], [14, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Activation", 
+      "param": {"act_type": "relu"}, 
+      "name": "activation13", 
+      "inputs": [[25, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Flatten", 
+      "param": {}, 
+      "name": "flatten1", 
+      "inputs": [[26, 0]], 
+      "backward_source_id": -1
+    }, 
+    {
+      "op": "Dotproduct", 
+      "param": {}, 
+      "name": "dotproduct0", 
+      "inputs": [[17, 0], [27, 0]], 
+      "backward_source_id": -1
+    }
+  ], 
+  "arg_nodes": [0, 1, 2, 5, 6, 9, 10, 13, 14, 18], 
+  "heads": [[17, 0], [27, 0], [28, 0]]
+}
